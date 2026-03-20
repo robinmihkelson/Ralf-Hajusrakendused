@@ -109,7 +109,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <section class="rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-slate-100">
+    <section class="rounded-2xl border border-sidebar-border/70 bg-black/5 p-4 text-slate-900 dark:text-slate-100">
         <h2 class="text-lg font-semibold">Weather</h2>
 
         <form class="mt-4 flex flex-col gap-2 sm:flex-row" @submit="onSubmit">
@@ -132,18 +132,17 @@ onMounted(() => {
         <p v-if="error" class="mt-3 rounded-md bg-rose-900/30 p-2 text-sm text-rose-200">{{ error }}</p>
 
         <div v-if="weather" class="mt-4 space-y-3">
-            <div class="rounded-lg bg-black/25 p-3">
-                <p class="text-sm">{{ weather.data.city }} ({{ weather.data.country_code }})</p>
+            <div class="rounded-lg border border-slate-300/40 bg-black/5 p-3 dark:border-slate-700 dark:bg-white/5">
+                <p class="text-xl mt-4 font-bold">{{ weather.data.city }} ({{ weather.data.country_code }})</p>
                 <p class="text-xs text-slate-300">{{ weather.data.country }}</p>
-                <p class="mt-2 text-3xl">{{ weather.data.current.temperature }}{{ weather.data.current.unit_temp }}</p>
-                <p class="text-sm">{{ displayCode }}</p>
+                <p class="mt-2 font-bold text-7xl">{{ weather.data.current.temperature }}{{ weather.data.current.unit_temp }}</p>
+                <p class="text-xl">{{ displayCode }}</p>
             </div>
 
             <div class="grid gap-2 sm:grid-cols-2">
-                <p class="rounded-md bg-black/20 p-2 text-sm">Wind {{ weather.data.current.wind_speed }} {{ weather.data.current.unit_wind }} ({{ directionLabel }})</p>
-                <p class="rounded-md bg-black/20 p-2 text-sm">Min / Max {{ tempRange }}</p>
+                <p class="rounded-md border border-slate-300/40 bg-black/5 p-2 text-sm dark:border-slate-700 dark:bg-white/5">Wind {{ weather.data.current.wind_speed }} {{ weather.data.current.unit_wind }} ({{ directionLabel }})</p>
+                <p class="rounded-md border border-slate-300/40 bg-black/5 p-2 text-sm dark:border-slate-700 dark:bg-white/5">Min / Max {{ tempRange }}</p>
             </div>
-
         </div>
     </section>
 </template>
