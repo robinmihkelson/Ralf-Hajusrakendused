@@ -36,7 +36,7 @@ type WeatherError = {
     error: string;
 };
 
-const query = ref('Tallinn, EE');
+const query = ref('Kuressaare, EE');
 const loading = ref(false);
 const error = ref('');
 const weather = ref<WeatherPayload | null>(null);

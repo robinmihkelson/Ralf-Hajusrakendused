@@ -15,9 +15,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import UserMenuContent from '@/components/UserMenuContent.vue';
 import { getInitials } from '@/composables/useInitials';
-import type { BreadcrumbItem, NavItem } from '@/types';
+import type { BreadcrumbItem, NavItem, SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { BookOpen, Folder, LayoutGrid, Menu, NotebookText, Search } from 'lucide-vue-next';
+import { BookOpen, Folder, LayoutGrid, Menu, NotebookText, Search, ShoppingBag } from 'lucide-vue-next';
 import { computed } from 'vue';
 
 interface Props {
@@ -28,8 +28,8 @@ const props = withDefaults(defineProps<Props>(), {
     breadcrumbs: () => [],
 });
 
-const page = usePage();
-const auth = computed(() => page.props.auth);
+const page = usePage<SharedData>();
+const auth = computed(() => page.props.auth.user);
 
 const isCurrentRoute = (url: string) => {
     return page.url === url;
@@ -47,6 +47,11 @@ const mainNavItems: NavItem[] = [
         title: 'Blog',
         href: '/blog',
         icon: NotebookText,
+    },
+    {
+        title: 'E-Shop',
+        href: '/eshop',
+        icon: ShoppingBag,
     },
 ];
 
@@ -149,7 +154,7 @@ const rightNavItems: NavItem[] = [
                                             <Button variant="ghost" size="icon" as-child class="group h-9 w-9 cursor-pointer">
                                                 <a :href="item.href" target="_blank" rel="noopener noreferrer">
                                                     <span class="sr-only">{{ item.title }}</span>
-                                                    <component :is="item.icon" class="size-5 opacity-80 group-hover:opacity-100" />
+                                                    <component v-if="item.icon" :is="item.icon" class="size-5 opacity-80 group-hover:opacity-100" />
                                                 </a>
                                             </Button>
                                         </TooltipTrigger>
@@ -170,15 +175,15 @@ const rightNavItems: NavItem[] = [
                                 class="relative size-10 w-auto rounded-full p-1 focus-within:ring-2 focus-within:ring-primary"
                             >
                                 <Avatar class="size-8 overflow-hidden rounded-full">
-                                    <AvatarImage :src="auth.user.avatar" :alt="auth.user.name" />
+                                    <AvatarImage :src="auth.avatar || ''" :alt="auth.name" />
                                     <AvatarFallback class="rounded-lg bg-neutral-200 font-semibold text-black dark:bg-neutral-700 dark:text-white">
-                                        {{ getInitials(auth.user?.name) }}
+                                        {{ getInitials(auth.name) }}
                                     </AvatarFallback>
                                 </Avatar>
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" class="w-56">
-                            <UserMenuContent :user="auth.user" />
+                            <UserMenuContent :user="auth" />
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>

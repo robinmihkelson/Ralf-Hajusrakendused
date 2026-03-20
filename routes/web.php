@@ -22,6 +22,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Blog');
     })->name('blog');
 
+    Route::get('eshop', function () {
+        return Inertia::render('EShop');
+    })->name('eshop');
+
     Route::get('/blog/posts', [BlogPostController::class, 'index'])->name('blog.posts.index');
     Route::post('/blog/posts', [BlogPostController::class, 'store'])->name('blog.posts.store');
     Route::get('/blog/posts/{post}', [BlogPostController::class, 'show'])->name('blog.posts.show');
