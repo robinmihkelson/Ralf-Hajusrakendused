@@ -17,13 +17,15 @@ class WeatherController extends Controller
             $search = 'Tallinn';
         }
 
+        $units = env('OPENWEATHER_UNITS', 'metric');
+
         [$city, $countryCode] = $this->parseSearch($search);
         $queryKey = Str::of($city)->lower()->trim()->slug('-');
         if ($countryCode !== '') {
             $queryKey = $queryKey->append('-', $countryCode);
         }
 
-        $cacheKey = 'weather-api-'.$queryKey->toString();
+        $cacheKey = 'weather-api-'.$units.'-'.$queryKey->toString();
         $cacheTTLMinutes = 10;
         $cached = Cache::get($cacheKey);
 
@@ -38,32 +40,31 @@ class WeatherController extends Controller
 
         if (env('OPENWEATHER_API_KEY', '') === '') {
             return response()->json([
-                'error' => 'Puudub OPENWEATHER_API_KEY .env-is.',
+                'error' => 'Missing OPENWEATHER_API_KEY in environment.',
             ], 500);
         }
 
-        $location = $this->resolveLocation($city, $countryCode);
-        if (isset($location['error'])) {
-            return response()->json([
-                'error' => $location['error'],
-            ], 404);
-        }
-
-        $weather = $this->fetchWeather((float) $location['latitude'], (float) $location['longitude']);
+        $weather = $this->fetchWeatherByQuery($city, $countryCode, $units);
         if (isset($weather['error'])) {
             return response()->json([
                 'error' => $weather['error'],
             ], 502);
         }
 
+        if (! isset($weather['location'])) {
+            return response()->json([
+                'error' => 'Location data is missing from weather response.',
+            ], 502);
+        }
+
         $payload = [
-            'city' => $location['name'],
-            'country' => $location['country'],
-            'country_code' => $location['country_code'],
+            'city' => $weather['location']['name'],
+            'country' => $weather['location']['country'],
+            'country_code' => $weather['location']['country_code'],
             'time' => $weather['time'],
             'coordinates' => [
-                'lat' => round((float) $location['latitude'], 3),
-                'lon' => round((float) $location['longitude'], 3),
+                'lat' => round((float) $weather['location']['lat'], 3),
+                'lon' => round((float) $weather['location']['lon'], 3),
             ],
             'current' => [
                 'temperature' => $weather['temperature'],
@@ -72,8 +73,8 @@ class WeatherController extends Controller
                 'weather_code' => $weather['weather_code'],
                 'condition' => $this->conditionText((int) $weather['weather_code']),
                 'icon' => $this->conditionIcon((int) $weather['weather_code']),
-                'unit_temp' => '°C',
-                'unit_wind' => 'km/h',
+                'unit_temp' => $units === 'imperial' ? '°F' : '°C',
+                'unit_wind' => $units === 'imperial' ? 'mph' : 'm/s',
             ],
             'forecast' => [
                 'min_temp' => $weather['min_temp'],
@@ -105,57 +106,29 @@ class WeatherController extends Controller
         return [$city, $country];
     }
 
-    private function resolveLocation(string $city, string $countryCode): array
+    private function fetchWeatherByQuery(string $city, string $countryCode, string $units): array
     {
-        $params = [
-            'q' => $countryCode === '' ? $city : "$city,$countryCode",
-            'limit' => 1,
-            'appid' => env('OPENWEATHER_API_KEY'),
-        ];
-
-        $response = Http::timeout(8)->get('https://api.openweathermap.org/geo/1.0/direct', $params);
-        if (! $response->successful()) {
-            return ['error' => 'Geokoodide teenus ei tööta praegu.'];
-        }
-
-        $results = $response->json([], []);
-        if (! is_array($results) || count($results) === 0) {
-            return ['error' => 'Asukohta ei leitud. Proovi täpsustada linn + riik (nt Tallinn, EE).'];
-        }
-
-        $first = $results[0];
-        if (! is_array($first)) {
-            return ['error' => 'Ilmaandmete allikas andis ootamatu vastuse.'];
-        }
-
-        return [
-            'name' => (string) ($first['name'] ?? $city),
-            'country' => (string) ($first['country'] ?? $countryCode),
-            'country_code' => (string) ($first['country'] ?? $countryCode),
-            'latitude' => (float) ($first['lat'] ?? 0),
-            'longitude' => (float) ($first['lon'] ?? 0),
-        ];
-    }
-
-    private function fetchWeather(float $lat, float $lon): array
-    {
+        $query = $countryCode === '' ? $city : $city.",".$countryCode;
         $response = Http::timeout(8)->get('https://api.openweathermap.org/data/2.5/weather', [
-            'lat' => $lat,
-            'lon' => $lon,
+            'q' => $query,
             'appid' => env('OPENWEATHER_API_KEY'),
-            'units' => 'metric',
-            'lang' => 'et',
+            'units' => $units,
+            'lang' => 'en',
         ]);
-
         if (! $response->successful()) {
-            return ['error' => 'Ilma andmeid ei õnnestunud laadida.'];
+            $errorMessage = $response->json('message', 'Weather service is currently unavailable.');
+            $status = $response->status();
+            return ['error' => "Weather data could not be loaded (HTTP {$status}): {$errorMessage}"];
         }
 
         $current = $response->json([], []);
-        if (! is_array($current)
-            || ! isset($current['main']['temp'], $current['wind']['speed'], $current['weather'][0]['id'])
-        ) {
-            return ['error' => 'Ilmaandmete vastus on puudulik.'];
+        if (! is_array($current) || ! isset($current['name'], $current['sys']['country'], $current['coord']['lat'], $current['coord']['lon'], $current['main']['temp'], $current['wind']['speed'], $current['weather'][0]['id'])) {
+            return ['error' => 'Weather response is incomplete.'];
+        }
+
+        $weather = $current['weather'][0] ?? [];
+        if (! is_array($weather)) {
+            $weather = [];
         }
 
         $minTemp = $current['main']['temp_min'] ?? null;
@@ -163,31 +136,39 @@ class WeatherController extends Controller
         $humidity = $current['main']['humidity'] ?? null;
 
         return [
+            'location' => [
+                'name' => (string) ($current['name'] ?? $city),
+                'country' => (string) ($current['sys']['country'] ?? $countryCode),
+                'country_code' => (string) ($current['sys']['country'] ?? $countryCode),
+                'lat' => (float) ($current['coord']['lat'] ?? 0),
+                'lon' => (float) ($current['coord']['lon'] ?? 0),
+            ],
             'time' => date('Y-m-d H:i:s', (int) ($current['dt'] ?? time())),
             'temperature' => (float) $current['main']['temp'],
-            'wind_speed' => round((float) $current['wind']['speed'] * 3.6, 1),
+            'wind_speed' => is_numeric($current['wind']['speed']) ? round((float) $current['wind']['speed'], 1) : null,
             'wind_direction' => (float) ($current['wind']['deg'] ?? 0),
-            'weather_code' => (int) $current['weather'][0]['id'],
+            'weather_code' => (int) ($weather['id'] ?? 800),
             'min_temp' => is_numeric($minTemp) ? (float) $minTemp : null,
             'max_temp' => is_numeric($maxTemp) ? (float) $maxTemp : null,
             'precipitation' => is_numeric($humidity) ? (int) $humidity : null,
+            'condition_text' => (string) ($weather['description'] ?? ''),
         ];
     }
 
     private function conditionText(int $code): string
     {
         return match (true) {
-            $code === 800 => 'Selge',
-            in_array($code, [801], true) => 'Peaaegu selge',
-            in_array($code, [802], true) => 'Mõõdukalt pilves',
-            in_array($code, [803, 804], true) => 'Pimeda piline',
-            ($code >= 200 && $code <= 232) => 'Äike',
-            ($code >= 300 && $code <= 321) => 'Kerge vihm',
-            ($code >= 500 && $code <= 531) => 'Vihm',
-            ($code >= 600 && $code <= 622) => 'Lumine',
-            ($code >= 701 && $code <= 781) => 'Udu',
-            ($code >= 900) => 'Äike',
-            default => 'Teadmata',
+            $code === 800 => 'Clear',
+            in_array($code, [801], true) => 'Mostly clear',
+            in_array($code, [802], true) => 'Partly cloudy',
+            in_array($code, [803, 804], true) => 'Cloudy',
+            ($code >= 200 && $code <= 232) => 'Thunderstorm',
+            ($code >= 300 && $code <= 321) => 'Drizzle',
+            ($code >= 500 && $code <= 531) => 'Rain',
+            ($code >= 600 && $code <= 622) => 'Snow',
+            ($code >= 701 && $code <= 781) => 'Atmosphere',
+            ($code >= 900) => 'Thunderstorm',
+            default => 'Unknown',
         };
     }
 

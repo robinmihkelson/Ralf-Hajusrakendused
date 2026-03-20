@@ -86,13 +86,13 @@ const loadWeather = async () => {
         const result = (await response.json()) as WeatherPayload | WeatherError;
 
         if (!response.ok) {
-            error.value = (result as WeatherError).error || 'Ilmaandmeid ei õnnestunud laadida';
+            error.value = (result as WeatherError).error || 'Failed to load weather data';
             return;
         }
 
         weather.value = result as WeatherPayload;
     } catch {
-        error.value = 'Võrguühendus ebaõnnestus';
+        error.value = 'Network request failed';
     } finally {
         loading.value = false;
     }
@@ -110,8 +110,7 @@ onMounted(() => {
 
 <template>
     <section class="rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-slate-100">
-        <h2 class="text-lg font-semibold">Ilmateade</h2>
-        <p class="text-xs text-slate-300">API päringud on cache'iga optimeeritud.</p>
+        <h2 class="text-lg font-semibold">Weather</h2>
 
         <form class="mt-4 flex flex-col gap-2 sm:flex-row" @submit="onSubmit">
             <input
@@ -125,11 +124,11 @@ onMounted(() => {
                 class="rounded-md bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-900 disabled:bg-sky-700 disabled:text-slate-300"
                 type="submit"
             >
-                Otsi
+                Search
             </button>
         </form>
 
-        <p v-if="loading" class="mt-3 text-sm text-slate-300">Laen…</p>
+        <p v-if="loading" class="mt-3 text-sm text-slate-300">Loading…</p>
         <p v-if="error" class="mt-3 rounded-md bg-rose-900/30 p-2 text-sm text-rose-200">{{ error }}</p>
 
         <div v-if="weather" class="mt-4 space-y-3">
@@ -141,13 +140,10 @@ onMounted(() => {
             </div>
 
             <div class="grid gap-2 sm:grid-cols-2">
-                <p class="rounded-md bg-black/20 p-2 text-sm">Tuul {{ weather.data.current.wind_speed }} {{ weather.data.current.unit_wind }} ({{ directionLabel }})</p>
-                <p class="rounded-md bg-black/20 p-2 text-sm">Min / max {{ tempRange }}</p>
+                <p class="rounded-md bg-black/20 p-2 text-sm">Wind {{ weather.data.current.wind_speed }} {{ weather.data.current.unit_wind }} ({{ directionLabel }})</p>
+                <p class="rounded-md bg-black/20 p-2 text-sm">Min / Max {{ tempRange }}</p>
             </div>
 
-            <p class="rounded-md bg-black/20 p-2 text-xs text-slate-300">
-                Viimane uuendus: {{ weather.data.time }} · Vahemälu: {{ weather.cached ? 'jah' : 'ei' }}
-            </p>
         </div>
     </section>
 </template>
