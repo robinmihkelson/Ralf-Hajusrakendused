@@ -134,7 +134,6 @@ onMounted(() => {
         <div v-if="weather" class="mt-4 space-y-3">
             <div class="rounded-lg border border-slate-300/40 bg-black/5 p-3 dark:border-slate-700 dark:bg-white/5">
                 <p class="text-xl mt-4 font-bold">{{ weather.data.city }} ({{ weather.data.country_code }})</p>
-                <p class="text-xs text-slate-300">{{ weather.data.country }}</p>
                 <p class="mt-2 font-bold text-7xl">{{ weather.data.current.temperature }}{{ weather.data.current.unit_temp }}</p>
                 <p class="text-xl">{{ displayCode }}</p>
             </div>

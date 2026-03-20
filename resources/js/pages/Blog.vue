@@ -54,7 +54,7 @@ const deleting = ref<number | null>(null);
 const commentSaving = ref<number | null>(null);
 const commentDeleting = ref<number | null>(null);
 const isAdmin = computed(() => page.props.auth?.user?.is_admin ?? false);
-const currentUserId = computed(() => page.props.auth?.user?.id ?? null);
+const currentUserId = computed(() => page.props.auth?.user?.id);
 
 const postForm = reactive({
     id: null as number | null,
@@ -202,11 +202,6 @@ const addComment = async (postId: number) => {
 };
 
 const deleteComment = async (comment: BlogComment) => {
-    if (!isAdmin.value && comment.user?.id !== currentUserId.value) {
-        error.value = 'Only comment owners or administrators can remove comments.';
-        return;
-    }
-
     if (!confirm('Delete this comment?')) {
         return;
     }
@@ -309,7 +304,7 @@ onMounted(async () => {
                         <div class="mt-2 flex justify-end gap-1.5">
                             <button
                                 type="button"
-                                class="rounded-md border border-slate-300/40 px-2.5 py-1 text-xs"
+                                class="rounded-md border border-emerald-500 text-emerald-700 px-2.5 py-1 text-xs"
                                 @click="editPost(post)"
                             >
                                 Edit
@@ -336,7 +331,7 @@ onMounted(async () => {
                                     </div>
                                     <p class="mt-1 text-slate-700 dark:text-slate-100">{{ comment.content }}</p>
                                     <div
-                                        v-if="isAdmin || comment.user?.id === currentUserId"
+                                        v-if="isAdmin || comment.user.id === currentUserId"
                                         class="mt-1 text-right"
                                     >
                                         <button

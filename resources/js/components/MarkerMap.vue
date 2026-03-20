@@ -352,14 +352,14 @@ onBeforeUnmount(() => {
 
                     <div class="mt-2 flex justify-end gap-2">
                         <button
-                            class="rounded-md border border-slate-300 px-2 py-1 text-xs dark:border-slate-700"
+                            class="rounded-md border border-slate-500 px-2 py-1 text-xs dark:border-slate-700"
                             type="button"
                             @click="centerOnMarker(marker)"
                         >
                             Focus
                         </button>
                         <button
-                            class="rounded-md border border-emerald-300 px-2 py-1 text-xs text-emerald-700 dark:border-emerald-600 dark:text-emerald-300"
+                            class="rounded-md border border-emerald-500 px-2 py-1 text-xs text-emerald-700 dark:border-emerald-600 dark:text-emerald-300"
                             type="button"
                             @click="setFormFromMarker(marker)"
                         >

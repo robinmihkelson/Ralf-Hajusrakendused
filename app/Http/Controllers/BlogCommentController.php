@@ -38,8 +38,12 @@ class BlogCommentController extends Controller
     {
         $user = $request->user();
 
-        if (! $user || (! $user->is_admin && (int) $comment->user_id !== (int) $user->id)) {
-            return response()->json(['error' => 'Only comment owners or administrators can remove comments.'], 403);
+        if (! $user) {
+            return response()->json(['error' => 'Authentication required to remove comments.'], 401);
+        }
+
+        if (! $user->is_admin && $comment->user_id !== $user->id) {
+            return response()->json(['error' => 'Only the author or administrator can remove comments.'], 403);
         }
 
         $comment->delete();
