@@ -36,8 +36,10 @@ class BlogCommentController extends Controller
 
     public function destroy(Request $request, BlogComment $comment): JsonResponse
     {
-        if (! $request->user()?->is_admin) {
-            return response()->json(['error' => 'Only administrators can remove comments.'], 403);
+        $user = $request->user();
+
+        if (! $user || (! $user->is_admin && (int) $comment->user_id !== (int) $user->id)) {
+            return response()->json(['error' => 'Only comment owners or administrators can remove comments.'], 403);
         }
 
         $comment->delete();

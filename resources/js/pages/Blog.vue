@@ -45,7 +45,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-const page = usePage<{ auth: { user: { is_admin: boolean } } }>();
+const page = usePage<{ auth: { user: { id: number; is_admin: boolean } } }>();
 const posts = ref<BlogPost[]>([]);
 const loading = ref(false);
 const error = ref('');
@@ -54,6 +54,7 @@ const deleting = ref<number | null>(null);
 const commentSaving = ref<number | null>(null);
 const commentDeleting = ref<number | null>(null);
 const isAdmin = computed(() => page.props.auth?.user?.is_admin ?? false);
+const currentUserId = computed(() => page.props.auth?.user?.id ?? null);
 
 const postForm = reactive({
     id: null as number | null,
@@ -200,9 +201,9 @@ const addComment = async (postId: number) => {
     }
 };
 
-const deleteComment = async (commentId: number) => {
-    if (!isAdmin.value) {
-        error.value = 'Only administrators can remove comments.';
+const deleteComment = async (comment: BlogComment) => {
+    if (!isAdmin.value && comment.user?.id !== currentUserId.value) {
+        error.value = 'Only comment owners or administrators can remove comments.';
         return;
     }
 
@@ -210,11 +211,11 @@ const deleteComment = async (commentId: number) => {
         return;
     }
 
-    commentDeleting.value = commentId;
+    commentDeleting.value = comment.id;
     error.value = '';
 
     try {
-        await requestJson(`/blog/comments/${commentId}`, {
+        await requestJson(`/blog/comments/${comment.id}`, {
             method: 'DELETE',
         });
         await loadPosts();
@@ -240,42 +241,42 @@ onMounted(async () => {
     <Head title="Blog" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-            <section class="rounded-2xl border border-sidebar-border/70 bg-black/5 p-4">
-                <h2 class="text-lg font-semibold">Blog</h2>
+        <div class="flex h-full flex-1 flex-col gap-3 rounded-xl p-3">
+            <section class="rounded-2xl border border-sidebar-border/70 bg-black/5 p-3">
+                <h2 class="text-base font-semibold">Blog</h2>
 
-                <p v-if="error" class="mt-3 rounded-md bg-rose-900/20 p-2 text-sm text-rose-200">
+                <p v-if="error" class="mt-2 rounded-md bg-rose-900/20 p-1.5 text-xs text-rose-200">
                     {{ error }}
                 </p>
 
-                <form class="mt-4 grid gap-2" @submit="submitPost">
+                <form class="mt-2 grid gap-1.5" @submit="submitPost">
                     <label class="text-sm font-medium" for="post-title">Post title</label>
                     <input
                         id="post-title"
                         v-model="postForm.title"
-                        class="rounded-md border border-slate-300/40 bg-black/5 px-3 py-2 text-sm"
+                        class="rounded-md border border-slate-300/40 bg-black/5 px-2.5 py-1.5 text-sm"
                         placeholder="Post title"
                         type="text"
                     />
 
-                    <label class="mt-2 text-sm font-medium" for="post-description">Description</label>
+                    <label class="mt-1 text-sm font-medium" for="post-description">Description</label>
                     <textarea
                         id="post-description"
                         v-model="postForm.description"
-                        class="min-h-24 rounded-md border border-slate-300/40 bg-black/5 px-3 py-2 text-sm"
+                        class="min-h-20 rounded-md border border-slate-300/40 bg-black/5 px-2.5 py-1.5 text-sm"
                         placeholder="Post description"
                     ></textarea>
 
-                    <div class="mt-1 flex gap-2">
+                    <div class="mt-1 flex gap-1.5">
                         <button
                             :disabled="saving"
-                            class="rounded-md bg-sky-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                            class="rounded-md bg-sky-500 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
                             type="submit"
                         >
                             {{ postForm.id === null ? 'Create post' : 'Save changes' }}
                         </button>
                         <button
-                            class="rounded-md border border-slate-300/40 bg-black/5 px-4 py-2 text-sm"
+                            class="rounded-md border border-slate-300/40 bg-black/5 px-3 py-1.5 text-sm"
                             type="button"
                             @click="resetPostForm"
                         >
@@ -285,37 +286,37 @@ onMounted(async () => {
                 </form>
             </section>
 
-            <section class="rounded-2xl border border-sidebar-border/70 bg-black/5 p-4">
-                <h2 class="text-lg font-semibold">Posts</h2>
-                <p v-if="loading" class="mt-2 text-sm text-slate-500">Loading...</p>
+            <section class="rounded-2xl border border-sidebar-border/70 bg-black/5 p-3">
+                <h2 class="text-base font-semibold">Posts</h2>
+                <p v-if="loading" class="mt-1.5 text-sm text-slate-500">Loading...</p>
 
-                <div v-if="!loading && posts.length === 0" class="mt-2 text-sm text-slate-500">No posts yet.</div>
+                <div v-if="!loading && posts.length === 0" class="mt-1.5 text-sm text-slate-500">No posts yet.</div>
 
-                <div class="mt-3 space-y-3">
+                <div class="mt-2 space-y-2">
                     <article
                         v-for="post in posts"
                         :key="post.id"
-                        class="rounded-md border border-slate-300/40 bg-black/5 p-4"
+                        class="rounded-md border border-slate-300/40 bg-black/5 p-3"
                     >
-                        <div class="space-y-1">
-                            <p class="text-base font-semibold">{{ post.title }}</p>
+                        <div class="space-y-0.5">
+                            <p class="text-base font-semibold leading-tight">{{ post.title }}</p>
                             <p class="text-xs text-slate-500">
                                 {{ formatDate(post.created_at) }} · {{ formatDate(post.updated_at) }} · {{ post.comments_count }} comments
                             </p>
                         </div>
-                        <p class="mt-2 text-sm text-slate-700 dark:text-slate-100">{{ post.description }}</p>
+                        <p class="mt-1.5 text-sm text-slate-700 dark:text-slate-100">{{ post.description }}</p>
 
-                        <div class="mt-3 flex justify-end gap-2">
+                        <div class="mt-2 flex justify-end gap-1.5">
                             <button
                                 type="button"
-                                class="rounded-md border border-slate-300/40 px-3 py-1 text-sm"
+                                class="rounded-md border border-slate-300/40 px-2.5 py-1 text-xs"
                                 @click="editPost(post)"
                             >
                                 Edit
                             </button>
                             <button
                                 type="button"
-                                class="rounded-md border border-rose-300/50 px-3 py-1 text-sm text-rose-700"
+                                class="rounded-md border border-rose-300/50 px-2.5 py-1 text-xs text-rose-700"
                                 :disabled="deleting === post.id"
                                 @click="deletePost(post.id)"
                             >
@@ -323,23 +324,26 @@ onMounted(async () => {
                             </button>
                         </div>
 
-                        <div class="mt-4 border-t border-slate-300/40 pt-3">
+                        <div class="mt-2.5 border-t border-slate-300/40 pt-2">
                             <p class="text-sm font-medium">Comments</p>
-                            <div v-if="post.comments.length === 0" class="mt-2 text-xs text-slate-500">No comments yet.</div>
+                            <div v-if="post.comments.length === 0" class="mt-1.5 text-xs text-slate-500">No comments yet.</div>
 
-                            <div class="mt-2 space-y-2">
+                            <div class="mt-1.5 space-y-1.5">
                                 <div v-for="comment in post.comments" :key="comment.id" class="rounded-md border border-slate-300/40 bg-black/5 p-2 text-xs">
                                     <div class="flex justify-between gap-2">
                                         <p class="font-medium">{{ comment.user?.name || 'Unknown' }}</p>
                                         <p class="text-slate-500">{{ formatDate(comment.created_at) }}</p>
                                     </div>
                                     <p class="mt-1 text-slate-700 dark:text-slate-100">{{ comment.content }}</p>
-                                    <div v-if="isAdmin" class="mt-2 text-right">
+                                    <div
+                                        v-if="isAdmin || comment.user?.id === currentUserId"
+                                        class="mt-1 text-right"
+                                    >
                                         <button
-                                            class="rounded-md border border-rose-300/50 px-2 py-1 text-[11px] text-rose-700"
+                                            class="rounded-md border border-rose-300/50 px-2 py-0.5 text-[11px] text-rose-700"
                                             :disabled="commentDeleting === comment.id"
                                             type="button"
-                                            @click="deleteComment(comment.id)"
+                                        @click="deleteComment(comment)"
                                         >
                                             {{ commentDeleting === comment.id ? 'Deleting…' : 'Delete' }}
                                         </button>
@@ -347,14 +351,14 @@ onMounted(async () => {
                                 </div>
                             </div>
 
-                            <div class="mt-2">
+                            <div class="mt-1.5">
                                 <textarea
                                     v-model="commentInputs[post.id]"
-                                    class="min-h-16 w-full rounded-md border border-slate-300/40 bg-black/5 px-3 py-2 text-xs"
+                                    class="min-h-14 w-full rounded-md border border-slate-300/40 bg-black/5 px-2.5 py-1.5 text-xs"
                                     placeholder="Add a comment..."
                                 ></textarea>
                                 <button
-                                    class="mt-2 rounded-md bg-sky-500 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                                    class="mt-1.5 rounded-md bg-sky-500 px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-50"
                                     :disabled="commentSaving === post.id"
                                     type="button"
                                     @click="addComment(post.id)"
