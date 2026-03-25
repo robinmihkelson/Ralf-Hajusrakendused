@@ -10,7 +10,7 @@ import AppLogo from './AppLogo.vue';
 
 const mainNavItems: NavItem[] = [
     {
-        title: 'Dashboard',
+        title: 'Map & Weather',
         href: '/dashboard',
         icon: LayoutGrid,
     },
