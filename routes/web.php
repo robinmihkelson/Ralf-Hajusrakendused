@@ -3,6 +3,7 @@
 use App\Http\Controllers\MarkerController;
 use App\Http\Controllers\BlogCommentController;
 use App\Http\Controllers\BlogPostController;
+use App\Http\Controllers\EShopController;
 use App\Http\Controllers\WeatherController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -12,6 +13,7 @@ Route::get('/', function () {
 })->name('home');
 
 Route::get('/weather', [WeatherController::class, 'index'])->name('weather.current');
+Route::post('/stripe/webhook', [EShopController::class, 'stripeWebhook'])->name('stripe.webhook');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', function () {
@@ -22,9 +24,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Blog');
     })->name('blog');
 
-    Route::get('eshop', function () {
-        return Inertia::render('EShop');
-    })->name('eshop');
+    Route::get('eshop', [EShopController::class, 'index'])->name('eshop');
+    Route::get('eshop/checkout', [EShopController::class, 'checkout'])->name('eshop.checkout');
+    Route::post('eshop/checkout/session', [EShopController::class, 'createCheckoutSession'])->name('eshop.checkout.session');
+    Route::get('eshop/checkout/status', [EShopController::class, 'paymentStatus'])->name('eshop.checkout.status');
 
     Route::get('/blog/posts', [BlogPostController::class, 'index'])->name('blog.posts.index');
     Route::post('/blog/posts', [BlogPostController::class, 'store'])->name('blog.posts.store');
