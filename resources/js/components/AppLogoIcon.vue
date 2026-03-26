@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from 'vue';
+import { ref, watch, type HTMLAttributes } from 'vue';
 
 defineOptions({
     inheritAttrs: false,
@@ -7,13 +7,39 @@ defineOptions({
 
 interface Props {
     className?: HTMLAttributes['class'];
+    src?: string;
+    alt?: string;
 }
 
-defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+    src: '',
+    alt: 'Application logo',
+});
+
+const imageFailed = ref(false);
+
+watch(
+    () => props.src,
+    () => {
+        imageFailed.value = false;
+    },
+);
+
+const onImageError = () => {
+    imageFailed.value = true;
+};
 </script>
 
 <template>
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 42" :class="className" v-bind="$attrs">
+    <img
+        v-if="props.src && !imageFailed"
+        :src="props.src"
+        :alt="props.alt"
+        :class="['object-contain', props.className]"
+        v-bind="$attrs"
+        @error="onImageError"
+    />
+    <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 42" :class="props.className" v-bind="$attrs">
         <path
             fill="currentColor"
             fill-rule="evenodd"

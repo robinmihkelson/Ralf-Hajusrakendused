@@ -3,6 +3,7 @@
 use App\Http\Controllers\MarkerController;
 use App\Http\Controllers\BlogCommentController;
 use App\Http\Controllers\BlogPostController;
+use App\Http\Controllers\CarController;
 use App\Http\Controllers\EShopController;
 use App\Http\Controllers\WeatherController;
 use Illuminate\Support\Facades\Route;
@@ -28,6 +29,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('eshop/checkout', [EShopController::class, 'checkout'])->name('eshop.checkout');
     Route::post('eshop/checkout/session', [EShopController::class, 'createCheckoutSession'])->name('eshop.checkout.session');
     Route::get('eshop/checkout/status', [EShopController::class, 'paymentStatus'])->name('eshop.checkout.status');
+
+    Route::get('api', [CarController::class, 'page'])->name('api.page');
+    Route::get('api/cars', [CarController::class, 'index'])->name('cars.index');
+    Route::post('api/cars', [CarController::class, 'store'])->name('cars.store');
+    Route::get('api/cars/docs', [CarController::class, 'docs'])->name('cars.docs');
 
     Route::get('/blog/posts', [BlogPostController::class, 'index'])->name('blog.posts.index');
     Route::post('/blog/posts', [BlogPostController::class, 'store'])->name('blog.posts.store');

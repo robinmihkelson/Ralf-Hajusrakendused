@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
+import sidebarLogo from '../../images/logo.png';
 
 interface Props {
     class?: string;
@@ -9,10 +10,10 @@ defineProps<Props>();
 </script>
 
 <template>
-    <div class="flex aspect-square size-8 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
-        <AppLogoIcon class="size-5 fill-current text-white dark:text-black" />
+    <div class="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md">
+        <AppLogoIcon :src="sidebarLogo" alt="Hajusrakendused logo" class="size-8 object-contain" />
     </div>
-    <div class="ml-1 grid flex-1 text-left text-sm">
-        <span class="mb-0.5 truncate font-semibold leading-none">Laravel Starter Kit</span>
+    <div class="ml-2 grid flex-1 text-left text-sm">
+        <span class="truncate font-semibold leading-none">Hajusrakendused</span>
     </div>
 </template>
