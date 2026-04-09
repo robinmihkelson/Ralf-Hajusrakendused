@@ -129,7 +129,7 @@ onMounted(async () => {
                     <input
                         v-model="search"
                         class="w-64 max-w-full rounded-md border border-slate-300/40 bg-black/5 px-2 py-1.5 text-sm"
-                        placeholder="Search by name, species, region..."
+                        placeholder="Search"
                         type="text"
                     />
                 </div>
