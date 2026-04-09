@@ -41,4 +41,10 @@ return [
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
     ],
 
+    'sharks' => [
+        'url' => env('SHARKS_API_URL', 'https://hajusrakendused-main-pm8ido.laravel.cloud/api/sharks'),
+        'api_key' => env('SHARKS_API_KEY'),
+        'cache_ttl_seconds' => (int) env('SHARKS_API_CACHE_TTL', 600),
+    ],
+
 ];

@@ -5,6 +5,7 @@ use App\Http\Controllers\BlogCommentController;
 use App\Http\Controllers\BlogPostController;
 use App\Http\Controllers\CarController;
 use App\Http\Controllers\EShopController;
+use App\Http\Controllers\SharkController;
 use App\Http\Controllers\WeatherController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -34,6 +35,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('api/cars', [CarController::class, 'index'])->name('cars.index');
     Route::post('api/cars', [CarController::class, 'store'])->name('cars.store');
     Route::get('api/cars/docs', [CarController::class, 'docs'])->name('cars.docs');
+    Route::get('sharks', [SharkController::class, 'page'])->name('sharks.page');
+    Route::get('api/sharks', [SharkController::class, 'index'])->name('sharks.index');
 
     Route::get('/blog/posts', [BlogPostController::class, 'index'])->name('blog.posts.index');
     Route::post('/blog/posts', [BlogPostController::class, 'store'])->name('blog.posts.store');

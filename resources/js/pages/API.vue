@@ -278,11 +278,8 @@ onMounted(async () => {
                 <p v-if="docsLoading" class="mt-2 text-xs text-muted-foreground">Loading API docs...</p>
 
                 <div v-if="docs" class="mt-2 grid gap-2 text-xs">
-                    <p><strong>Name:</strong> {{ docs.name }} | <strong>Theme:</strong> {{ docs.theme }}</p>
                     <p><strong>List endpoint:</strong> <code>/api/cars</code></p>
                     <p><strong>Create endpoint:</strong> <code>/api/cars</code> (POST)</p>
-                    <p><strong>Docs endpoint:</strong> <code>{{ docsEndpoint }}</code></p>
-                    <p><strong>Cache:</strong> {{ docs.cache.strategy }} (TTL {{ docs.cache.ttl_seconds }}s)</p>
                 </div>
             </section>
 

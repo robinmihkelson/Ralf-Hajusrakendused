@@ -49,7 +49,7 @@ return [
             'id' => 'car7',
             'name' => '2001 Dacia Sandero',
             'image_url' => 'https://upload.wikimedia.org/wikipedia/commons/3/38/Dacia_Sandero_1.4_MPI_Ambiance_Platingrau.JPG',
-            'price_cents' => 42650,
+            'price_cents' => 1000000,
         ],
         'car8' => [
             'id' => 'car8',
