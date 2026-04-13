@@ -18,6 +18,7 @@ type BlogComment = {
 
 type BlogPost = {
     id: number;
+    user_id: number | null;
     title: string;
     description: string;
     created_at: string;
@@ -55,6 +56,7 @@ const commentSaving = ref<number | null>(null);
 const commentDeleting = ref<number | null>(null);
 const isAdmin = computed(() => page.props.auth?.user?.is_admin ?? false);
 const currentUserId = computed(() => page.props.auth?.user?.id);
+const canManagePost = (post: BlogPost) => isAdmin.value || post.user_id === currentUserId.value;
 
 const postForm = reactive({
     id: null as number | null,
@@ -82,7 +84,7 @@ const requestJson = async <T,>(input: string, init: RequestInit = {}): Promise<T
     const body = await response.json();
 
     if (!response.ok) {
-        throw new Error((body as JsonError).error ?? 'Request failed.');
+        throw new Error((body as JsonError & { message?: string }).error ?? body.message ?? 'Request failed.');
     }
 
     return body as T;
@@ -296,12 +298,12 @@ onMounted(async () => {
                         <div class="space-y-0.5">
                             <p class="text-base font-semibold leading-tight">{{ post.title }}</p>
                             <p class="text-xs text-slate-500">
-                                {{ formatDate(post.created_at) }} · {{ formatDate(post.updated_at) }} · {{ post.comments_count }} comments
+                                {{ formatDate(post.created_at) }} · {{ post.comments_count }} comments
                             </p>
                         </div>
                         <p class="mt-1.5 text-sm text-slate-700 dark:text-slate-100">{{ post.description }}</p>
 
-                        <div class="mt-2 flex justify-end gap-1.5">
+                        <div v-if="canManagePost(post)" class="mt-2 flex justify-end gap-1.5">
                             <button
                                 type="button"
                                 class="rounded-md border border-emerald-500 text-emerald-700 px-2.5 py-1 text-xs"
@@ -338,7 +340,7 @@ onMounted(async () => {
                                             class="rounded-md border border-rose-300/50 px-2 py-0.5 text-[11px] text-rose-700"
                                             :disabled="commentDeleting === comment.id"
                                             type="button"
-                                        @click="deleteComment(comment)"
+                                            @click="deleteComment(comment)"
                                         >
                                             {{ commentDeleting === comment.id ? 'Deleting…' : 'Delete' }}
                                         </button>
