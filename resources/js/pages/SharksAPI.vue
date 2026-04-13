@@ -107,8 +107,12 @@ const formatLabel = (key: string): string => {
         .replace(/\b\w/g, (char) => char.toUpperCase());
 };
 
+const isImageKey = (key: string): boolean => {
+    return /(image|image_url|photo|thumbnail|poster)/i.test(key);
+};
+
 const isImageUrl = (value: unknown): boolean => {
-    return typeof value === 'string' && /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(value.trim());
+    return typeof value === 'string' && /^https?:\/\/\S+/i.test(value.trim());
 };
 
 const toDisplayValue = (value: unknown): string => {
@@ -132,7 +136,7 @@ const toDisplayValue = (value: unknown): string => {
 };
 
 const visibleEntries = (item: SharkItem): Array<[string, unknown]> => {
-    return Object.entries(item).filter(([_, value]) => value !== null && value !== '' && !isImageUrl(value));
+    return Object.entries(item).filter(([key, value]) => value !== null && value !== '' && !isImageKey(key) && !isImageUrl(value));
 };
 
 const hasExpandedData = (item: SharkItem): boolean => {
@@ -169,28 +173,32 @@ onMounted(async () => {
                 <p v-else-if="filteredSharks.length === 0" class="mt-2 text-sm text-muted-foreground">No sharks found.</p>
 
                 <div v-else class="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                    <article v-for="(item, index) in filteredSharks" :key="String(item.id ?? item.slug ?? `${sharkName(item)}-${index}`)" class="rounded-md border border-slate-300/40 bg-black/5 p-2.5">
+                    <article
+                        v-for="(item, index) in filteredSharks"
+                        :key="String(item.id ?? item.slug ?? `${sharkName(item)}-${index}`)"
+                        class="min-w-0 rounded-md border border-slate-300/40 bg-black/5 p-2.5"
+                    >
                         <img v-if="sharkImage(item) !== ''" :src="sharkImage(item)" :alt="sharkName(item)" class="aspect-[6/3] w-full rounded-md object-cover object-center" loading="lazy" />
-                        <div class="mt-2">
-                            <h3 class="text-sm font-semibold">{{ sharkName(item) }}</h3>
-                            <p class="mt-1 text-xs">{{ sharkDescription(item) }}</p>
+                        <div class="mt-2 min-w-0">
+                            <h3 class="break-words text-sm font-semibold">{{ sharkName(item) }}</h3>
+                            <p class="mt-1 break-words text-xs">{{ sharkDescription(item) }}</p>
 
                             <div v-if="hasExpandedData(item)" class="mt-3 grid gap-2">
                                 <div
                                     v-for="[key, value] in visibleEntries(item)"
                                     :key="`${String(item.id ?? item.slug ?? index)}-${key}`"
-                                    class="rounded-md border border-slate-300/30 bg-white/40 p-2 dark:bg-black/10"
+                                    class="min-w-0 rounded-md border border-slate-300/30 bg-white/40 p-2 dark:bg-black/10"
                                 >
                                     <p class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                                         {{ formatLabel(key) }}
                                     </p>
-                                    <pre class="mt-1 overflow-x-auto whitespace-pre-wrap break-words font-sans text-xs text-foreground">{{ toDisplayValue(value) }}</pre>
+                                    <pre class="mt-1 overflow-x-auto whitespace-pre-wrap break-all font-sans text-xs text-foreground">{{ toDisplayValue(value) }}</pre>
                                 </div>
                             </div>
 
-                            <details class="mt-3 rounded-md border border-slate-300/30 bg-white/30 p-2 text-xs dark:bg-black/10">
+                            <details class="mt-3 min-w-0 rounded-md border border-slate-300/30 bg-white/30 p-2 text-xs dark:bg-black/10">
                                 <summary class="cursor-pointer font-medium">Raw API JSON</summary>
-                                <pre class="mt-2 overflow-x-auto whitespace-pre-wrap break-words">{{ rawJson(item) }}</pre>
+                                <pre class="mt-2 overflow-x-auto whitespace-pre-wrap break-all">{{ rawJson(item) }}</pre>
                             </details>
                         </div>
                     </article>
