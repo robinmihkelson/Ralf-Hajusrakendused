@@ -82,7 +82,6 @@ const pickString = (item: SharkItem, keys: string[], fallback = ''): string => {
 };
 
 const sharkName = (item: SharkItem): string => pickString(item, ['name', 'title', 'common_name', 'species'], 'Unknown shark');
-const sharkImage = (item: SharkItem): string => pickString(item, ['image', 'image_url', 'photo', 'thumbnail', 'poster']);
 const sharkDescription = (item: SharkItem): string => pickString(item, ['description', 'summary', 'details', 'habitat'], 'No description available.');
 
 const filteredSharks = computed(() => {
@@ -113,6 +112,86 @@ const isImageKey = (key: string): boolean => {
 
 const isImageUrl = (value: unknown): boolean => {
     return typeof value === 'string' && /^https?:\/\/\S+/i.test(value.trim());
+};
+
+const normalizeImageUrl = (value: string): string => {
+    const trimmed = value.trim();
+    if (trimmed === '') {
+        return '';
+    }
+
+    if (/^https?:\/\//i.test(trimmed)) {
+        return trimmed;
+    }
+
+    if (trimmed.startsWith('//')) {
+        return `https:${trimmed}`;
+    }
+
+    if (source.value === '') {
+        return trimmed;
+    }
+
+    try {
+        return new URL(trimmed, source.value).toString();
+    } catch {
+        return trimmed;
+    }
+};
+
+const findImageValue = (value: unknown): string => {
+    if (typeof value === 'string') {
+        return normalizeImageUrl(value);
+    }
+
+    if (Array.isArray(value)) {
+        for (const entry of value) {
+            const found = findImageValue(entry);
+            if (found !== '') {
+                return found;
+            }
+        }
+
+        return '';
+    }
+
+    if (value && typeof value === 'object') {
+        const record = value as Record<string, unknown>;
+        const preferredKeys = ['url', 'src', 'path', 'image', 'image_url', 'photo', 'thumbnail', 'poster'];
+
+        for (const key of preferredKeys) {
+            const found = findImageValue(record[key]);
+            if (found !== '') {
+                return found;
+            }
+        }
+    }
+
+    return '';
+};
+
+const sharkImage = (item: SharkItem): string => {
+    const preferredKeys = ['image', 'image_url', 'photo', 'thumbnail', 'poster'];
+
+    for (const key of preferredKeys) {
+        const found = findImageValue(item[key]);
+        if (found !== '') {
+            return found;
+        }
+    }
+
+    for (const [key, value] of Object.entries(item)) {
+        if (!isImageKey(key)) {
+            continue;
+        }
+
+        const found = findImageValue(value);
+        if (found !== '') {
+            return found;
+        }
+    }
+
+    return '';
 };
 
 const toDisplayValue = (value: unknown): string => {
