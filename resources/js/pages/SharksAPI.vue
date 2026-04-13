@@ -5,6 +5,7 @@ import { Head } from '@inertiajs/vue3';
 import { computed, onMounted, ref } from 'vue';
 
 type SharkItem = Record<string, unknown>;
+type SharkValue = string | number | boolean | null | SharkValue[] | { [key: string]: SharkValue };
 
 type SharksResponse = {
     source: string;
@@ -33,7 +34,7 @@ const error = ref('');
 const source = ref('');
 const search = ref('');
 
-const requestJson = async <T,>(input: string): Promise<T> => {
+async function requestJson<T>(input: string): Promise<T> {
     const response = await fetch(input, {
         headers: {
             Accept: 'application/json',
@@ -47,7 +48,7 @@ const requestJson = async <T,>(input: string): Promise<T> => {
     }
 
     return body;
-};
+}
 
 const loadSharks = async () => {
     loading.value = true;
@@ -84,15 +85,6 @@ const sharkName = (item: SharkItem): string => pickString(item, ['name', 'title'
 const sharkImage = (item: SharkItem): string => pickString(item, ['image', 'image_url', 'photo', 'thumbnail', 'poster']);
 const sharkDescription = (item: SharkItem): string => pickString(item, ['description', 'summary', 'details', 'habitat'], 'No description available.');
 
-const sharkMeta = (item: SharkItem): string => {
-    const species = pickString(item, ['species', 'scientific_name']);
-    const region = pickString(item, ['region', 'ocean', 'location']);
-    const length = pickString(item, ['length', 'max_length']);
-
-    const parts = [species, region, length].filter((part) => part !== '');
-    return parts.join(' · ');
-};
-
 const filteredSharks = computed(() => {
     const query = search.value.trim().toLowerCase();
     if (query === '') {
@@ -100,17 +92,56 @@ const filteredSharks = computed(() => {
     }
 
     return sharks.value.filter((item) => {
-        const searchable = [
-            sharkName(item),
-            sharkDescription(item),
-            sharkMeta(item),
-        ]
-            .join(' ')
-            .toLowerCase();
+        const searchable = JSON.stringify(item).toLowerCase();
 
         return searchable.includes(query);
     });
 });
+
+const formatLabel = (key: string): string => {
+    return key
+        .replace(/[_-]+/g, ' ')
+        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
+const isImageUrl = (value: unknown): boolean => {
+    return typeof value === 'string' && /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(value.trim());
+};
+
+const toDisplayValue = (value: unknown): string => {
+    if (value === null || value === undefined) {
+        return 'N/A';
+    }
+
+    if (typeof value === 'string') {
+        return value.trim() === '' ? 'N/A' : value;
+    }
+
+    if (typeof value === 'number' || typeof value === 'boolean') {
+        return String(value);
+    }
+
+    try {
+        return JSON.stringify(value, null, 2);
+    } catch {
+        return String(value);
+    }
+};
+
+const visibleEntries = (item: SharkItem): Array<[string, unknown]> => {
+    return Object.entries(item).filter(([_, value]) => value !== null && value !== '' && !isImageUrl(value));
+};
+
+const hasExpandedData = (item: SharkItem): boolean => {
+    return visibleEntries(item).length > 0;
+};
+
+const rawJson = (item: SharkItem): string => {
+    return JSON.stringify(item as SharkValue, null, 2);
+};
 
 onMounted(async () => {
     await loadSharks();
@@ -142,8 +173,25 @@ onMounted(async () => {
                         <img v-if="sharkImage(item) !== ''" :src="sharkImage(item)" :alt="sharkName(item)" class="aspect-[6/3] w-full rounded-md object-cover object-center" loading="lazy" />
                         <div class="mt-2">
                             <h3 class="text-sm font-semibold">{{ sharkName(item) }}</h3>
-                            <p v-if="sharkMeta(item) !== ''" class="mt-1 text-xs text-muted-foreground">{{ sharkMeta(item) }}</p>
                             <p class="mt-1 text-xs">{{ sharkDescription(item) }}</p>
+
+                            <div v-if="hasExpandedData(item)" class="mt-3 grid gap-2">
+                                <div
+                                    v-for="[key, value] in visibleEntries(item)"
+                                    :key="`${String(item.id ?? item.slug ?? index)}-${key}`"
+                                    class="rounded-md border border-slate-300/30 bg-white/40 p-2 dark:bg-black/10"
+                                >
+                                    <p class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                        {{ formatLabel(key) }}
+                                    </p>
+                                    <pre class="mt-1 overflow-x-auto whitespace-pre-wrap break-words font-sans text-xs text-foreground">{{ toDisplayValue(value) }}</pre>
+                                </div>
+                            </div>
+
+                            <details class="mt-3 rounded-md border border-slate-300/30 bg-white/30 p-2 text-xs dark:bg-black/10">
+                                <summary class="cursor-pointer font-medium">Raw API JSON</summary>
+                                <pre class="mt-2 overflow-x-auto whitespace-pre-wrap break-words">{{ rawJson(item) }}</pre>
+                            </details>
                         </div>
                     </article>
                 </div>
@@ -151,4 +199,3 @@ onMounted(async () => {
         </div>
     </AppLayout>
 </template>
-

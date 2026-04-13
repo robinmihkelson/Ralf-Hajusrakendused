@@ -40,6 +40,10 @@ type SubjectResponse = {
 type DocsResponse = {
     name: string;
     theme: string;
+    auth?: {
+        session: string;
+        api_key: string;
+    };
     endpoints: Array<{
         method: string;
         path: string;
@@ -84,7 +88,10 @@ const docs = ref<DocsResponse | null>(null);
 const loading = ref(false);
 const docsLoading = ref(false);
 const saving = ref(false);
+const generatingKey = ref(false);
 const error = ref('');
+const copyMessage = ref('');
+const generatedApiKey = ref('');
 
 const filters = reactive({
     search: '',
@@ -106,11 +113,15 @@ const form = reactive({
     horsepower: '',
 });
 
+const keyForm = reactive({
+    name: '',
+});
+
 const csrfToken = () => {
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
 };
 
-const requestJson = async <T,>(input: string, init: RequestInit = {}): Promise<T> => {
+async function requestJson<T>(input: string, init: RequestInit = {}): Promise<T> {
     const token = csrfToken();
     const response = await fetch(input, {
         headers: {
@@ -121,14 +132,25 @@ const requestJson = async <T,>(input: string, init: RequestInit = {}): Promise<T
         credentials: 'same-origin',
         ...init,
     });
-    const body = (await response.json()) as { error?: string } & T;
+    const text = await response.text();
+    let body: ({ error?: string } & T) | null = null;
 
-    if (!response.ok) {
-        throw new Error(body.error ?? 'Request failed.');
+    if (text !== '') {
+        try {
+            body = JSON.parse(text) as { error?: string } & T;
+        } catch {
+            body = null;
+        }
     }
 
-    return body;
-};
+    if (!response.ok) {
+        const message = body?.error ?? text ?? `Request failed with status ${response.status}.`;
+
+        throw new Error(message);
+    }
+
+    return (body ?? ({} as T)) as T;
+}
 
 const buildQueryString = () => {
     const params = new URLSearchParams();
@@ -213,6 +235,43 @@ const resetForm = () => {
     form.horsepower = '';
 };
 
+const generateApiKey = async () => {
+    error.value = '';
+    copyMessage.value = '';
+    generatingKey.value = true;
+
+    try {
+        const response = await requestJson<{ api_key: string }>('/api/cars/keys', {
+            method: 'POST',
+            body: JSON.stringify({
+                name: keyForm.name.trim(),
+            }),
+        });
+
+        generatedApiKey.value = response.api_key;
+        keyForm.name = '';
+    } catch (err) {
+        if (err instanceof Error) {
+            error.value = err.message;
+        }
+    } finally {
+        generatingKey.value = false;
+    }
+};
+
+const copyApiKey = async () => {
+    if (!generatedApiKey.value) {
+        return;
+    }
+
+    try {
+        await navigator.clipboard.writeText(generatedApiKey.value);
+        copyMessage.value = 'API key copied.';
+    } catch {
+        copyMessage.value = 'Copy failed. Copy the key manually.';
+    }
+};
+
 const submitForm = async (event: Event) => {
     event.preventDefault();
     error.value = '';
@@ -280,6 +339,43 @@ onMounted(async () => {
                 <div v-if="docs" class="mt-2 grid gap-2 text-xs">
                     <p><strong>List endpoint:</strong> <code>/api/cars</code></p>
                     <p><strong>Create endpoint:</strong> <code>/api/cars</code> (POST)</p>
+                    <p v-if="docs.auth?.api_key"><strong>Auth:</strong> {{ docs.auth.api_key }}</p>
+                </div>
+            </section>
+
+            <section class="rounded-2xl border border-sidebar-border/70 bg-black/5 p-3 dark:bg-white/5">
+                <div class="flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+                    <div>
+                        <h2 class="text-base font-semibold">Generate API key</h2>
+                    </div>
+                </div>
+
+                <div class="mt-3 grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
+                    <input
+                        v-model="keyForm.name"
+                        class="rounded-md border border-slate-300/40 bg-black/5 px-2 py-1.5 text-sm"
+                        placeholder="Key name, for example Local app"
+                        type="text"
+                    />
+                    <button
+                        :disabled="generatingKey"
+                        class="rounded-md bg-sky-500 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
+                        type="button"
+                        @click="generateApiKey"
+                    >
+                        {{ generatingKey ? 'Generating...' : 'Generate key' }}
+                    </button>
+                </div>
+
+                <div v-if="generatedApiKey" class="mt-3 rounded-xl border border-emerald-300/40 bg-emerald-50/60 p-3 text-sm dark:bg-emerald-950/20">
+                    <p class="font-medium">Save this key now. It will not be shown again.</p>
+                    <code class="mt-2 block break-all rounded-md bg-black/5 px-2 py-2 text-xs">{{ generatedApiKey }}</code>
+                    <div class="mt-2 flex flex-wrap items-center gap-2">
+                        <button class="rounded-md border border-slate-300/40 bg-white/70 px-3 py-1.5 text-sm" type="button" @click="copyApiKey">
+                            Copy key
+                        </button>
+                        <span v-if="copyMessage" class="text-xs text-muted-foreground">{{ copyMessage }}</span>
+                    </div>
                 </div>
             </section>
 

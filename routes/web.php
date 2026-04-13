@@ -16,6 +16,9 @@ Route::get('/', function () {
 
 Route::get('/weather', [WeatherController::class, 'index'])->name('weather.current');
 Route::post('/stripe/webhook', [EShopController::class, 'stripeWebhook'])->name('stripe.webhook');
+Route::get('api/cars', [CarController::class, 'index'])->name('cars.index');
+Route::post('api/cars', [CarController::class, 'store'])->name('cars.store');
+Route::get('api/cars/docs', [CarController::class, 'docs'])->name('cars.docs');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', function () {
@@ -32,9 +35,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('eshop/checkout/status', [EShopController::class, 'paymentStatus'])->name('eshop.checkout.status');
 
     Route::get('api', [CarController::class, 'page'])->name('api.page');
-    Route::get('api/cars', [CarController::class, 'index'])->name('cars.index');
-    Route::post('api/cars', [CarController::class, 'store'])->name('cars.store');
-    Route::get('api/cars/docs', [CarController::class, 'docs'])->name('cars.docs');
+    Route::post('api/cars/keys', [CarController::class, 'createApiKey'])->name('cars.keys.store');
     Route::get('sharks', [SharkController::class, 'page'])->name('sharks.page');
     Route::get('api/sharks', [SharkController::class, 'index'])->name('sharks.index');
 

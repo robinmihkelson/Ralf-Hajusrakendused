@@ -58,4 +58,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Car::class);
     }
+
+    public function carsApiKeys(): HasMany
+    {
+        return $this->hasMany(CarsApiKey::class);
+    }
 }

@@ -3,9 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Car;
+use App\Models\CarsApiKey;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -24,6 +28,14 @@ class CarController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $user = $this->resolveApiUser($request);
+
+        if (! $user) {
+            return response()->json([
+                'error' => 'Authentication required. Use a logged-in session or a Cars API key.',
+            ], 401);
+        }
+
         $payload = $request->validate([
             'search' => ['nullable', 'string', 'max:255'],
             'brand' => ['nullable', 'string', 'max:120'],
@@ -44,7 +56,7 @@ class CarController extends Controller
             'year_from' => isset($payload['year_from']) ? (int) $payload['year_from'] : null,
             'year_to' => isset($payload['year_to']) ? (int) $payload['year_to'] : null,
             'limit' => isset($payload['limit']) ? (int) $payload['limit'] : 12,
-            'viewer_user_id' => $request->user()->id,
+            'viewer_user_id' => $user->id,
         ];
 
         $cacheVersion = (int) Cache::get(self::CACHE_VERSION_KEY, 1);
@@ -108,6 +120,14 @@ class CarController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $user = $this->resolveApiUser($request);
+
+        if (! $user) {
+            return response()->json([
+                'error' => 'Authentication required. Use a logged-in session or a Cars API key.',
+            ], 401);
+        }
+
         $payload = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'image' => ['required', 'url', 'max:2048'],
@@ -119,7 +139,7 @@ class CarController extends Controller
 
         $car = Car::query()->create([
             ...$payload,
-            'user_id' => $request->user()->id,
+            'user_id' => $user->id,
         ]);
 
         if (! Cache::has(self::CACHE_VERSION_KEY)) {
@@ -138,6 +158,10 @@ class CarController extends Controller
         return response()->json([
             'name' => 'Cars API',
             'theme' => 'Cars',
+            'auth' => [
+                'session' => 'Authenticated browser session is supported.',
+                'api_key' => 'Send the generated key as Authorization: Bearer <key> or X-API-Key: <key>.',
+            ],
             'endpoints' => [
                 [
                     'method' => 'GET',
@@ -158,7 +182,7 @@ class CarController extends Controller
                 [
                     'method' => 'POST',
                     'path' => '/api/cars',
-                    'description' => 'Create a new car record.',
+                    'description' => 'Create a new car record with a session or API key.',
                     'body_fields' => [
                         'title' => 'required string',
                         'image' => 'required URL',
@@ -176,5 +200,82 @@ class CarController extends Controller
                 'invalidated_on_create' => true,
             ],
         ]);
+    }
+
+    public function createApiKey(Request $request): JsonResponse
+    {
+        if (! Schema::hasTable('cars_api_keys')) {
+            return response()->json([
+                'error' => 'Cars API keys table is missing. Run php artisan migrate and try again.',
+            ], 503);
+        }
+
+        $payload = $request->validate([
+            'name' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $plainTextKey = 'cars_'.Str::random(40);
+
+        $apiKey = $request->user()->carsApiKeys()->create([
+            'name' => trim((string) ($payload['name'] ?? '')) ?: 'Default key',
+            'key_prefix' => substr($plainTextKey, 0, 12),
+            'key_hash' => hash('sha256', $plainTextKey),
+        ]);
+
+        return response()->json([
+            'message' => 'Cars API key created. Save it now because it will not be shown again.',
+            'api_key' => $plainTextKey,
+            'key' => [
+                'id' => $apiKey->id,
+                'name' => $apiKey->name,
+                'key_prefix' => $apiKey->key_prefix,
+                'created_at' => $apiKey->created_at?->toISOString(),
+            ],
+        ], 201);
+    }
+
+    private function resolveApiUser(Request $request): ?User
+    {
+        $sessionUser = $request->user();
+
+        if ($sessionUser) {
+            return $sessionUser;
+        }
+
+        $plainTextKey = $this->extractApiKey($request);
+        if ($plainTextKey === null) {
+            return null;
+        }
+
+        $apiKey = CarsApiKey::query()
+            ->with('user')
+            ->where('key_hash', hash('sha256', $plainTextKey))
+            ->first();
+
+        if (! $apiKey) {
+            return null;
+        }
+
+        if ($apiKey->expires_at !== null && $apiKey->expires_at->isPast()) {
+            return null;
+        }
+
+        $apiKey->forceFill([
+            'last_used_at' => now(),
+        ])->save();
+
+        return $apiKey->user;
+    }
+
+    private function extractApiKey(Request $request): ?string
+    {
+        $bearerToken = trim((string) $request->bearerToken());
+        if ($bearerToken !== '') {
+            return $bearerToken;
+        }
+
+        $headerToken = trim((string) $request->header('X-API-Key', ''));
+
+        return $headerToken !== '' ? $headerToken : null;
     }
 }
