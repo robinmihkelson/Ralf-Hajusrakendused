@@ -339,7 +339,6 @@ onMounted(async () => {
                 <div v-if="docs" class="mt-2 grid gap-2 text-xs">
                     <p><strong>List endpoint:</strong> <code>/api/cars</code></p>
                     <p><strong>Create endpoint:</strong> <code>/api/cars</code> (POST)</p>
-                    <p v-if="docs.auth?.api_key"><strong>Auth:</strong> {{ docs.auth.api_key }}</p>
                 </div>
             </section>
 
